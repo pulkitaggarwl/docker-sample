@@ -1,4 +1,4 @@
-name: workflow to deploy an ARM Template using CLI commands
+name: workflow to deploy an ARM Template using CLI commands    
 on: push
 
 # CONFIGURATION
