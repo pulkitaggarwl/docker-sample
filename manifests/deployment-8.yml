@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "jysinakscluster-bf75"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "jysinakscluster-bf75"
+  template:
+    metadata:
+      labels:
+        app: "jysinakscluster-bf75"
+    spec:
+      containers:
+        - name: "jysinakscluster-bf75"
+          image: "kubernetesdkrtest.azurecr.io/jysinakscluster"
+          ports:
+          - containerPort: 8080
