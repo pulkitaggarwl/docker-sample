@@ -1,0 +1,67 @@
+WITH actions_v2_workflow_change AS (WITH workflow_data AS (
+     SELECT
+         c.id
+        ,c.timestamp
+        ,c.day
+        ,c.user_id
+        ,uo.login as user_login
+        ,c.app_id
+        ,c.bot_id
+        ,c.workflow_id
+        ,c.repository_id
+        ,concat(workflow_id,cast(c.repository_id as varchar)) as unique_workflow_id
+        ,c.sha_before
+        ,c.sha_after
+        ,c.workflow_file_path
+        ,c.workflow_identifier
+        ,c.change_type
+        ,c.action_identifiers_before
+        ,c.action_identifiers_after
+        ,row_number() OVER (PARTITION BY c.workflow_id,c.repository_id ORDER BY c.timestamp) as rows
+      FROM hive_hydro.hydro.launch_v0_workflow_change c
+        LEFT JOIN hive.canonical.accounts_current uo
+          ON c.user_id = uo.dotcom_id
+      WHERE 1 = 1
+        AND c.workflow_file_path LIKE '%.yml' -- only actions v2 uses yml
+        AND c.day >= '2019-08-15' -- don't include anything prior to the first time the event was instrumented.
+  )
+
+  SELECT
+       w.id
+      ,w.timestamp
+      ,w.day
+      ,w.user_id
+      ,w.user_login
+      ,w.app_id
+      ,w.bot_id
+      ,w.workflow_id
+      ,w.unique_workflow_id
+      ,w.repository_id
+      ,r.owner_dotcom_id as repo_owner_id
+      ,w.sha_before
+      ,w.sha_after
+      ,w.workflow_file_path
+      ,w.workflow_identifier
+      ,CASE
+        WHEN w.rows = 1 AND change_type = 'CREATION' THEN 'CREATION'
+        WHEN w.rows > 1 AND change_type = 'CREATION' THEN 'UPDATE'
+        ELSE w.change_type
+      END as change_type
+      ,w.action_identifiers_before
+      ,w.action_identifiers_after
+  FROM workflow_data w
+    LEFT JOIN hive.canonical.repositories_current r
+      ON w.repository_id = r.id
+  WHERE 1 = 1)
+SELECT
+	COUNT(DISTINCT actions_v2_workflow_change.user_id ) AS "actions_v2_workflow_change.distinct_users"
+FROM actions_v2_workflow_change
+
+WHERE ((date(actions_v2_workflow_change."day")  >= (DATE_TRUNC('DAY', DATE_ADD('day', -28, CAST(CAST(DATE_TRUNC('DAY', NOW()) AS DATE) AS TIMESTAMP)))))) AND (actions_v2_workflow_change.change_type = 'CREATION') AND (actions_v2_workflow_change.repo_owner_id NOT IN (
+           61977690 --Folding-GitHub-Adenine
+          ,61978418 --Folding-GitHub-Thymine
+          ,61978412 --Folding-GitHub-Cytosine
+          ,61978416 --Folding-GitHub-Guanine
+  ) AND actions_v2_workflow_change.user_login not in ('none')
+)
+LIMIT 500
