@@ -30,34 +30,3 @@ jobs:
         docker build "$GITHUB_WORKSPACE/Application" -f  "Application/Dockerfile" -t demofeb18acr.azurecr.io/demofeb18cluster:${{ github.sha }}
         docker push demofeb18acr.azurecr.io/demofeb18cluster:${{ github.sha }}
     
-    - uses: azure/k8s-set-context@v1
-      id: login
-      with:
-         kubeconfig: ${{ secrets.aks_demofeb18cluster_kubeConfig }}
-    
-    - name: Create namespace
-      run: |
-        namespacePresent=`kubectl get namespace | grep demofeb18cluster07e2 | wc -l`
-        if [ $namespacePresent -eq 0 ]
-        then
-            echo `kubectl create namespace demofeb18cluster07e2`
-        fi
-
-    - uses: azure/k8s-create-secret@v1
-      with:
-        namespace: demofeb18cluster07e2
-        container-registry-url: demofeb18acr.azurecr.io
-        container-registry-username: ${{ steps.create-acr.outputs.acr_username }}
-        container-registry-password: ${{ steps.create-acr.outputs.acr_password }}
-        secret-name: demofeb18cludockerauth
-       
-    - uses: azure/k8s-deploy@v1
-      with:
-        namespace: demofeb18cluster07e2
-        manifests: |
-          manifests/deployment-3.yml
-          manifests/service-3.yml
-        images: |
-          demofeb18acr.azurecr.io/demofeb18cluster:${{ github.sha }}
-        imagepullsecrets: |
-          demofeb18cludockerauth
